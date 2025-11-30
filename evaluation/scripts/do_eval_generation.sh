@@ -10,7 +10,7 @@ do
     echo $i
         python evaluation/generation/eva_generation.py \
             --dataset_name $i \
-            --model_name_or_path xxx \
+            --model_name_or_path ./gpt2-finetuned \
             --max_length 1024 
 
 done

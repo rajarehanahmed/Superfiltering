@@ -74,8 +74,14 @@ def main():
     set_seed(args.seed)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    model = LlamaForCausalLM.from_pretrained(args.model_name_or_path, cache_dir="../cache/")
-    tokenizer = LlamaTokenizer.from_pretrained(args.model_name_or_path, cache_dir="../cache/")
+    # Allow model type selection: llama or gpt2/auto
+    if 'gpt2' in args.model_name_or_path.lower():
+        from transformers import AutoModelForCausalLM, AutoTokenizer
+        model = AutoModelForCausalLM.from_pretrained(args.model_name_or_path, cache_dir="../cache/")
+        tokenizer = AutoTokenizer.from_pretrained(args.model_name_or_path, cache_dir="../cache/")
+    else:
+        model = LlamaForCausalLM.from_pretrained(args.model_name_or_path, cache_dir="../cache/")
+        tokenizer = LlamaTokenizer.from_pretrained(args.model_name_or_path, cache_dir="../cache/")
 
     model.to(device)
     model.eval()
@@ -121,7 +127,11 @@ def main():
                 prompt = prompt_no_input.format_map({"instruction":instruction})
             inputs = tokenizer(prompt, return_tensors="pt")
             input_ids = inputs.input_ids.to(device)
-            generate_ids = model.generate(input_ids, max_length=args.max_length)
+            generate_ids = model.generate(
+                input_ids,
+                max_new_tokens=128,
+                pad_token_id=tokenizer.eos_token_id
+            )
             outputs = tokenizer.batch_decode(generate_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False)[0]
             point['raw_output'] = outputs
             if args.prompt in ['alpaca','wiz']:
