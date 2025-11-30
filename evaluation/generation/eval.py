@@ -178,7 +178,8 @@ if __name__ == "__main__":
                 i += batch_size
                 wait_base = 10
                 pbar.update(batch_size)
-            except:
+            except Exception as e:
+                print("Exception when calling OpenAI API: ", e)
                 retry += 1
                 error += 1
                 print("Batch error: ",i, i+batch_size)
