@@ -97,10 +97,19 @@ def main():
 
     use_auto = 'gpt2' in model_path.lower()
     if use_auto:
-        if os.path.basename(model_path) == 'gpt2' and not has_local_weights(model_path):
-            model_path = 'gpt2'  # force HF hub resolution even if a local empty folder exists
-        model = AutoModelForCausalLM.from_pretrained(model_path, cache_dir="../cache/")
-        tokenizer = AutoTokenizer.from_pretrained(model_path, cache_dir="../cache/")
+        # If a local folder named 'gpt2' exists without weights, force using HF Hub id to avoid shadowing
+        if model_path == 'gpt2' and os.path.isdir('gpt2') and not has_local_weights('gpt2'):
+            model_path = 'openai-community/gpt2'
+        model = AutoModelForCausalLM.from_pretrained(
+            model_path,
+            cache_dir="../cache/",
+            local_files_only=False,
+        )
+        tokenizer = AutoTokenizer.from_pretrained(
+            model_path,
+            cache_dir="../cache/",
+            local_files_only=False,
+        )
         # Ensure pad token exists for GPT-like baselines (GPT-2 lacks one by default)
         if tokenizer.pad_token is None:
             tokenizer.pad_token = tokenizer.eos_token
