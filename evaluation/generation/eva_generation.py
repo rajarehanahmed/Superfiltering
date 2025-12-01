@@ -74,14 +74,42 @@ def main():
     set_seed(args.seed)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    # Allow model type selection: llama or gpt2/auto
-    if 'gpt2' in args.model_name_or_path.lower():
-        from transformers import AutoModelForCausalLM, AutoTokenizer
-        model = AutoModelForCausalLM.from_pretrained(args.model_name_or_path, cache_dir="../cache/")
-        tokenizer = AutoTokenizer.from_pretrained(args.model_name_or_path, cache_dir="../cache/")
+    # Allow model type selection: auto for gpt-like, llama otherwise.
+    # If a local folder named 'gpt2' exists but has no weights, prefer HF hub id.
+    from transformers import AutoModelForCausalLM, AutoTokenizer
+    model_path = args.model_name_or_path
+
+    def has_local_weights(path):
+        if not os.path.isdir(path):
+            return False
+        expected_files = {
+            "pytorch_model.bin",
+            "model.safetensors",
+            "tf_model.h5",
+            "model.ckpt.index",
+            "flax_model.msgpack",
+        }
+        try:
+            files = set(os.listdir(path))
+        except Exception:
+            return False
+        return any(f in files for f in expected_files)
+
+    use_auto = 'gpt2' in model_path.lower()
+    if use_auto:
+        if os.path.basename(model_path) == 'gpt2' and not has_local_weights(model_path):
+            model_path = 'gpt2'  # force HF hub resolution even if a local empty folder exists
+        model = AutoModelForCausalLM.from_pretrained(model_path, cache_dir="../cache/")
+        tokenizer = AutoTokenizer.from_pretrained(model_path, cache_dir="../cache/")
+        # Ensure pad token exists for GPT-like baselines (GPT-2 lacks one by default)
+        if tokenizer.pad_token is None:
+            tokenizer.pad_token = tokenizer.eos_token
+        if getattr(model.config, 'pad_token_id', None) is None:
+            model.config.pad_token_id = tokenizer.pad_token_id
     else:
-        model = LlamaForCausalLM.from_pretrained(args.model_name_or_path, cache_dir="../cache/")
-        tokenizer = LlamaTokenizer.from_pretrained(args.model_name_or_path, cache_dir="../cache/")
+        # LLaMA-style models typically require the Llama* classes
+        model = LlamaForCausalLM.from_pretrained(model_path, cache_dir="../cache/")
+        tokenizer = LlamaTokenizer.from_pretrained(model_path, cache_dir="../cache/")
 
     model.to(device)
     model.eval()
@@ -127,10 +155,14 @@ def main():
                 prompt = prompt_no_input.format_map({"instruction":instruction})
             inputs = tokenizer(prompt, return_tensors="pt")
             input_ids = inputs.input_ids.to(device)
+            attention_mask = inputs.get('attention_mask')
+            if attention_mask is not None:
+                attention_mask = attention_mask.to(device)
             generate_ids = model.generate(
                 input_ids,
                 max_new_tokens=128,
-                pad_token_id=tokenizer.eos_token_id
+                pad_token_id=tokenizer.eos_token_id,
+                attention_mask=attention_mask
             )
             outputs = tokenizer.batch_decode(generate_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False)[0]
             point['raw_output'] = outputs
