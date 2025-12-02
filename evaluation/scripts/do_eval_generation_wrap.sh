@@ -1,7 +1,7 @@
 array=(
     vicuna
-    koala
-    wizardlm
+    # koala
+    # wizardlm
     sinstruct
     lima
 )

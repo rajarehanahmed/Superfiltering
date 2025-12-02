@@ -1,9 +1,9 @@
 array=(
-    logs/gpt2_10_per-VS-gpt2/koala_wrap.json
+    # logs/gpt2_10_per-VS-gpt2/koala_wrap.json
     logs/gpt2_10_per-VS-gpt2/lima_wrap.json
     logs/gpt2_10_per-VS-gpt2/sinstruct_wrap.json
     logs/gpt2_10_per-VS-gpt2/vicuna_wrap.json
-    logs/gpt2_10_per-VS-gpt2/wizardlm_wrap.json
+    # logs/gpt2_10_per-VS-gpt2/wizardlm_wrap.json
 )
 for i in "${array[@]}"
 do

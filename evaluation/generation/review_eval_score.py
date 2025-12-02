@@ -89,13 +89,22 @@ def get_scores_all(pure_data):
 for dataset in args.task_list:
     review_path = ''
     for root, ds, fs in os.walk(args.review_home_path):
-            for f in fs:
-                if 'gpt-3.5' in args.api_model:
-                    if 'reviews_gpt3.5' in f and f.endswith('.json') and dataset.lower() in f:
-                        review_path = os.path.join(root, f)
-                elif 'gpt-4' in args.api_model:
-                    if 'reviews_gpt4' in f and f.endswith('.json') and dataset.lower() in f:
-                        review_path = os.path.join(root, f)
+        for f in fs:
+            # Try matching both suffixes to be robust
+            match_suffix = None
+            if 'gpt-3.5' in args.api_model:
+                match_suffix = 'reviews_gpt3.5'
+            elif 'gpt-4' in args.api_model:
+                match_suffix = 'reviews_gpt4'
+            # Fallback to either if api_model not specified correctly
+            if match_suffix:
+                if match_suffix in f and f.endswith('.json') and dataset.lower() in f:
+                    review_path = os.path.join(root, f)
+            else:
+                if (('reviews_gpt3.5' in f or 'reviews_gpt4' in f) and f.endswith('.json') and dataset.lower() in f):
+                    review_path = os.path.join(root, f)
+    if not review_path:
+        raise FileNotFoundError(f"No review file found for dataset '{dataset}' under '{args.review_home_path}'. Ensure do_eval.sh used the same api_model and files exist.")
     with open(review_path, "r") as f:
         review_data = json.load(f)
     pure_data = review_data['data']
